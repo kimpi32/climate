@@ -9,6 +9,16 @@ export const CITIES: CityInfo[] = [
   { id: 'gwangju', name: '광주', nameEn: 'Gwangju', stationId: 156, observationStart: 1939, lat: 35.16, lon: 126.85 },
   { id: 'ulsan', name: '울산', nameEn: 'Ulsan', stationId: 152, observationStart: 1932, lat: 35.54, lon: 129.31 },
   { id: 'jeju', name: '제주', nameEn: 'Jeju', stationId: 184, observationStart: 1923, lat: 33.51, lon: 126.53 },
+  // 추가 도시
+  { id: 'gangneung', name: '강릉', nameEn: 'Gangneung', stationId: 105, observationStart: 1912, lat: 37.75, lon: 128.90 },
+  { id: 'cheonan', name: '천안', nameEn: 'Cheonan', stationId: 232, observationStart: 1973, lat: 36.76, lon: 127.12 },
+  { id: 'cheongju', name: '청주', nameEn: 'Cheongju', stationId: 131, observationStart: 1967, lat: 36.64, lon: 127.44 },
+  { id: 'donghae', name: '동해', nameEn: 'Donghae', stationId: 106, observationStart: 1992, lat: 37.51, lon: 129.12 },
+  { id: 'jeonju', name: '전주', nameEn: 'Jeonju', stationId: 146, observationStart: 1918, lat: 35.82, lon: 127.15 },
+  { id: 'pohang', name: '포항', nameEn: 'Pohang', stationId: 138, observationStart: 1942, lat: 36.03, lon: 129.38 },
+  { id: 'miryang', name: '밀양', nameEn: 'Miryang', stationId: 288, observationStart: 1973, lat: 35.49, lon: 128.74 },
+  { id: 'yeosu', name: '여수', nameEn: 'Yeosu', stationId: 168, observationStart: 1942, lat: 34.74, lon: 127.74 },
+  { id: 'changwon', name: '창원', nameEn: 'Changwon', stationId: 155, observationStart: 1985, lat: 35.17, lon: 128.57 },
 ];
 
 // 기준기간: 1973-2000

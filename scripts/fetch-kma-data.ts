@@ -38,6 +38,16 @@ const CITIES: CityConfig[] = [
   { id: 'gwangju', name: '광주', stationId: 156, startYear: 1961 },
   { id: 'ulsan', name: '울산', stationId: 152, startYear: 1961 },
   { id: 'jeju', name: '제주', stationId: 184, startYear: 1961 },
+  // 추가 도시 (한반도 hex map 확장)
+  { id: 'gangneung', name: '강릉', stationId: 105, startYear: 1961 },
+  { id: 'cheonan', name: '천안', stationId: 232, startYear: 1961 },
+  { id: 'cheongju', name: '청주', stationId: 131, startYear: 1967 },
+  { id: 'donghae', name: '동해', stationId: 106, startYear: 1961 },
+  { id: 'jeonju', name: '전주', stationId: 146, startYear: 1961 },
+  { id: 'pohang', name: '포항', stationId: 138, startYear: 1961 },
+  { id: 'miryang', name: '밀양', stationId: 288, startYear: 1961 },
+  { id: 'yeosu', name: '여수', stationId: 168, startYear: 1961 },
+  { id: 'changwon', name: '창원', stationId: 155, startYear: 1961 },
 ];
 
 const END_YEAR = new Date().getFullYear();
@@ -191,7 +201,16 @@ async function main() {
 
   let totalCalls = 0;
 
+  // --only-new 플래그: 파일이 없는 도시만 수집
+  const onlyNew = process.argv.includes('--only-new');
+
   for (const city of CITIES) {
+    const filePath = path.join(outputDir, `${city.id}.json`);
+    if (onlyNew && fs.existsSync(filePath)) {
+      console.log(`[${city.name}] 이미 존재, 건너뜀 (${filePath})`);
+      continue;
+    }
+
     console.log(`[${city.name}] 수집 시작 (지점: ${city.stationId}, ${city.startYear}~${END_YEAR})...`);
 
     const records = await fetchCityData(city);
@@ -208,7 +227,6 @@ async function main() {
       records,
     };
 
-    const filePath = path.join(outputDir, `${city.id}.json`);
     fs.writeFileSync(filePath, JSON.stringify(output), 'utf-8');
     console.log(`  → ${filePath} (${records.length}건, ${records[0].date} ~ ${records[records.length - 1].date})`);
 

@@ -23,28 +23,24 @@ interface HexMapProps {
 // Row 6: 제주(0)
 //
 const HEX_GRID: Record<string, [number, number]> = {
-  incheon: [1, 0],
-  seoul:   [2, 0],
-  daejeon: [2, 2],
-  gwangju: [1, 3],
-  daegu:   [3, 2],
-  ulsan:   [3, 3],
-  busan:   [3, 4],
-  jeju:    [0, 6],
+  incheon:   [1, 0],
+  seoul:     [2, 0],
+  gangneung: [3, 0],
+  cheonan:   [1, 1],
+  cheongju:  [2, 1],
+  donghae:   [3, 1],
+  jeonju:    [1, 2],
+  daejeon:   [2, 2],
+  daegu:     [3, 2],
+  pohang:    [4, 2],
+  gwangju:   [1, 3],
+  miryang:   [2, 3],
+  ulsan:     [3, 3],
+  yeosu:     [1, 4],
+  changwon:  [2, 4],
+  busan:     [3, 4],
+  jeju:      [0, 6],
 };
-
-// Filler cities — grey placeholder tiles to form the peninsula shape
-const FILLER_TILES: { name: string; col: number; row: number }[] = [
-  { name: '강릉', col: 3, row: 0 },
-  { name: '천안', col: 1, row: 1 },
-  { name: '청주', col: 2, row: 1 },
-  { name: '동해', col: 3, row: 1 },
-  { name: '전주', col: 1, row: 2 },
-  { name: '포항', col: 4, row: 2 },
-  { name: '밀양', col: 2, row: 3 },
-  { name: '여수', col: 1, row: 4 },
-  { name: '창원', col: 2, row: 4 },
-];
 
 const HEX_R = 45;
 const HEX_W = Math.sqrt(3) * HEX_R;  // pointy-top width ≈ 77.9
@@ -165,29 +161,7 @@ export default function HexMap({ selectedCity, onCityChange }: HexMapProps) {
       .range([HEATMAP_COLD, HEATMAP_NEUTRAL, HEATMAP_HOT])
       .interpolate(d3.interpolateRgb);
 
-    // ── 1) Draw filler tiles (grey, no data) ──
-    FILLER_TILES.forEach((tile) => {
-      const [cx, cy] = hexCenter(tile.col, tile.row);
-      const g = svg.append('g');
-
-      g.append('path')
-        .attr('d', hexPath(cx, cy, HEX_R))
-        .attr('fill', 'var(--card-bg)')
-        .attr('stroke', 'rgba(128,128,128,0.2)')
-        .attr('stroke-width', 1);
-
-      g.append('text')
-        .attr('x', cx).attr('y', cy)
-        .attr('text-anchor', 'middle')
-        .attr('dominant-baseline', 'middle')
-        .attr('font-size', '14px')
-        .attr('font-weight', '500')
-        .attr('fill', 'var(--muted)')
-        .attr('opacity', 0.5)
-        .text(tile.name);
-    });
-
-    // ── 2) Draw data cities (colored) ──
+    // ── Draw all city hexagons ──
     CITIES.forEach((city) => {
       const pos = HEX_GRID[city.id];
       if (!pos) return;
