@@ -77,8 +77,8 @@ html {
   margin-bottom: 16px;
 }
 
-/* SVG text */
-svg text {
+/* SVG text (범례 등 기본 스타일, hex-map 제외) */
+svg:not(.hex-map) text {
   fill: #94a3b8;
   font-size: 11px;
 }
