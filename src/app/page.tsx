@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Header from '@/components/Header';
+import HexMap from '@/components/HexMap';
 import CitySelector from '@/components/CitySelector';
 import WarmingStripes from '@/components/WarmingStripes';
 import DailyTempChart from '@/components/DailyTempChart';
@@ -38,6 +39,11 @@ export default function Home() {
       <Header />
 
       <main className="max-w-7xl mx-auto px-4 py-6">
+        {/* Hex Map */}
+        <section className="mb-8">
+          <HexMap selectedCity={selectedCity} onCityChange={setSelectedCity} />
+        </section>
+
         {/* City Selector */}
         <section className="mb-8">
           <CitySelector selectedCity={selectedCity} onCityChange={setSelectedCity} />

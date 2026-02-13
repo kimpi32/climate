@@ -1,14 +1,14 @@
 import type { CityInfo } from '@/types/climate';
 
 export const CITIES: CityInfo[] = [
-  { id: 'seoul', name: '서울', nameEn: 'Seoul', stationId: 108, observationStart: 1907 },
-  { id: 'busan', name: '부산', nameEn: 'Busan', stationId: 159, observationStart: 1904 },
-  { id: 'daegu', name: '대구', nameEn: 'Daegu', stationId: 143, observationStart: 1907 },
-  { id: 'daejeon', name: '대전', nameEn: 'Daejeon', stationId: 133, observationStart: 1969 },
-  { id: 'incheon', name: '인천', nameEn: 'Incheon', stationId: 112, observationStart: 1904 },
-  { id: 'gwangju', name: '광주', nameEn: 'Gwangju', stationId: 156, observationStart: 1939 },
-  { id: 'ulsan', name: '울산', nameEn: 'Ulsan', stationId: 152, observationStart: 1932 },
-  { id: 'jeju', name: '제주', nameEn: 'Jeju', stationId: 184, observationStart: 1923 },
+  { id: 'seoul', name: '서울', nameEn: 'Seoul', stationId: 108, observationStart: 1907, lat: 37.57, lon: 126.98 },
+  { id: 'busan', name: '부산', nameEn: 'Busan', stationId: 159, observationStart: 1904, lat: 35.18, lon: 129.08 },
+  { id: 'daegu', name: '대구', nameEn: 'Daegu', stationId: 143, observationStart: 1907, lat: 35.87, lon: 128.60 },
+  { id: 'daejeon', name: '대전', nameEn: 'Daejeon', stationId: 133, observationStart: 1969, lat: 36.35, lon: 127.38 },
+  { id: 'incheon', name: '인천', nameEn: 'Incheon', stationId: 112, observationStart: 1904, lat: 37.46, lon: 126.70 },
+  { id: 'gwangju', name: '광주', nameEn: 'Gwangju', stationId: 156, observationStart: 1939, lat: 35.16, lon: 126.85 },
+  { id: 'ulsan', name: '울산', nameEn: 'Ulsan', stationId: 152, observationStart: 1932, lat: 35.54, lon: 129.31 },
+  { id: 'jeju', name: '제주', nameEn: 'Jeju', stationId: 184, observationStart: 1923, lat: 33.51, lon: 126.53 },
 ];
 
 // 기준기간: 1973-2000

@@ -39,6 +39,8 @@ export interface CityInfo {
   nameEn: string;
   stationId: number;
   observationStart: number;
+  lat: number;
+  lon: number;
 }
 
 export interface ExtremeRecord {
