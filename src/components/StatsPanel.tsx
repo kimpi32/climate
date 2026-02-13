@@ -77,17 +77,17 @@ export default function StatsPanel({ records, cityName }: StatsPanelProps) {
 
         {/* 열대야 */}
         <StatCard
-          label="열대야 일수"
+          label="열대야 일수 (최근 5년 평균)"
           value={`${avgRecentTropical.toFixed(1)}일`}
-          sub={`최근 5년 평균 (초기: ${avgEarlyTropical.toFixed(1)}일)`}
+          sub={`초기 5년 평균: ${avgEarlyTropical.toFixed(1)}일`}
           color="text-amber-400"
         />
 
         {/* 폭염 */}
         <StatCard
-          label="폭염 일수"
+          label="폭염 일수 (최근 5년 평균)"
           value={`${avgRecentHeatwave.toFixed(1)}일`}
-          sub={`최근 5년 평균 (초기: ${avgEarlyHeatwave.toFixed(1)}일)`}
+          sub={`초기 5년 평균: ${avgEarlyHeatwave.toFixed(1)}일`}
           color="text-rose-400"
         />
       </div>

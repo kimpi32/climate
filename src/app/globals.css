@@ -72,7 +72,7 @@ html {
 }
 
 .chart-subtitle {
-  font-size: 0.875rem;
+  font-size: 1rem;
   color: var(--muted);
   margin-bottom: 16px;
 }
