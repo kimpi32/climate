@@ -42,13 +42,13 @@ const HEX_GRID: Record<string, [number, number]> = {
   jeju:      [0, 6],
 };
 
-const HEX_R = 45;
-const HEX_W = Math.sqrt(3) * HEX_R;  // pointy-top width ≈ 77.9
-const ROW_H = 1.5 * HEX_R;           // vertical row spacing = 67.5
-const PAD_X = 55;
-const PAD_Y = 55;
-const SVG_W = 435;
-const SVG_H = 540;
+const HEX_R = 50;
+const HEX_W = Math.sqrt(3) * HEX_R;  // pointy-top width ≈ 86.6
+const ROW_H = 1.5 * HEX_R;           // vertical row spacing = 75
+const PAD_X = 60;
+const PAD_Y = 60;
+const SVG_W = 485;
+const SVG_H = 590;
 
 function hexCenter(col: number, row: number): [number, number] {
   return [
@@ -169,7 +169,7 @@ export default function HexMap({ selectedCity, onCityChange }: HexMapProps) {
       const anomaly = data.get(city.id)?.get(period);
       const fill = anomaly !== undefined ? color(anomaly) : '#e5e7eb';
       const isSelected = city.id === selectedCity;
-      const isDark = anomaly !== undefined && Math.abs(anomaly) > maxAbs * 0.45;
+      const isDark = anomaly !== undefined && Math.abs(anomaly) > maxAbs * 0.35;
 
       const g = svg.append('g')
         .style('cursor', 'pointer')
@@ -181,25 +181,26 @@ export default function HexMap({ selectedCity, onCityChange }: HexMapProps) {
         .attr('stroke', isSelected ? 'var(--foreground)' : 'rgba(128,128,128,0.3)')
         .attr('stroke-width', isSelected ? 2.5 : 1);
 
-      // City name — larger text
+      // City name
       g.append('text')
-        .attr('x', cx).attr('y', cy - 9)
+        .attr('x', cx).attr('y', cy - 10)
         .attr('text-anchor', 'middle')
         .attr('dominant-baseline', 'middle')
-        .attr('font-size', '15px')
+        .attr('font-size', '16px')
         .attr('font-weight', '700')
+        .attr('letter-spacing', '0.02em')
         .attr('fill', isDark ? '#fff' : 'var(--foreground)')
         .text(city.name);
 
       // Anomaly value
       if (anomaly !== undefined) {
         g.append('text')
-          .attr('x', cx).attr('y', cy + 13)
+          .attr('x', cx).attr('y', cy + 14)
           .attr('text-anchor', 'middle')
           .attr('dominant-baseline', 'middle')
-          .attr('font-size', '14px')
-          .attr('font-weight', '600')
-          .attr('fill', isDark ? 'rgba(255,255,255,0.9)' : 'var(--muted)')
+          .attr('font-size', '15px')
+          .attr('font-weight', '700')
+          .attr('fill', isDark ? 'rgba(255,255,255,0.95)' : 'var(--foreground)')
           .text(`${anomaly > 0 ? '+' : ''}${anomaly.toFixed(1)}℃`);
       }
     });
@@ -248,7 +249,7 @@ export default function HexMap({ selectedCity, onCityChange }: HexMapProps) {
       </p>
 
       <div className="flex justify-center">
-        <svg ref={svgRef} className="w-full max-w-[435px]" />
+        <svg ref={svgRef} className="w-full max-w-[485px]" />
       </div>
 
       {/* Period controls */}

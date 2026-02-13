@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import type { DailyRecord } from '@/types/climate';
 import { calcCityStats } from '@/lib/climate-utils';
 
@@ -81,6 +81,7 @@ export default function StatsPanel({ records, cityName }: StatsPanelProps) {
           value={`${avgRecentTropical.toFixed(1)}일`}
           sub={`초기 5년 평균: ${avgEarlyTropical.toFixed(1)}일`}
           color="text-amber-400"
+          tooltip="밤 최저기온이 25℃ 이상인 날"
         />
 
         {/* 폭염 */}
@@ -89,6 +90,7 @@ export default function StatsPanel({ records, cityName }: StatsPanelProps) {
           value={`${avgRecentHeatwave.toFixed(1)}일`}
           sub={`초기 5년 평균: ${avgEarlyHeatwave.toFixed(1)}일`}
           color="text-rose-400"
+          tooltip="낮 최고기온이 33℃ 이상인 날"
         />
       </div>
     </div>
@@ -100,17 +102,41 @@ function StatCard({
   value,
   sub,
   color,
+  tooltip,
 }: {
   label: string;
   value: string;
   sub: string;
   color: string;
+  tooltip?: string;
 }) {
+  const [showTip, setShowTip] = useState(false);
+
   return (
     <div className="bg-[var(--background)] rounded-lg p-4 border border-[var(--card-border)]">
-      <p className="text-sm text-[var(--muted)] mb-1">{label}</p>
-      <p className={`text-2xl font-bold ${color}`}>{value}</p>
-      <p className="text-sm text-[var(--muted)] mt-1">{sub}</p>
+      <p className="text-base text-[var(--muted)] mb-1.5">
+        {label}
+        {tooltip && (
+          <span className="relative inline-block ml-1">
+            <button
+              type="button"
+              onClick={() => setShowTip((v) => !v)}
+              onMouseEnter={() => setShowTip(true)}
+              onMouseLeave={() => setShowTip(false)}
+              className="inline-flex items-center justify-center w-[18px] h-[18px] rounded-full border border-[var(--card-border)] text-[11px] font-medium text-[var(--muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors cursor-help align-middle"
+            >
+              ?
+            </button>
+            {showTip && (
+              <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1.5 text-xs rounded-md bg-[var(--foreground)] text-[var(--background)] whitespace-nowrap z-10 shadow-lg">
+                {tooltip}
+              </span>
+            )}
+          </span>
+        )}
+      </p>
+      <p className={`text-3xl font-bold ${color}`}>{value}</p>
+      <p className="text-base text-[var(--muted)] mt-1.5">{sub}</p>
     </div>
   );
 }
