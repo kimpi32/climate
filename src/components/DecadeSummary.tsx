@@ -137,7 +137,7 @@ export default function DecadeSummary({ records, cityName }: DecadeSummaryProps)
 
   return (
     <div className="chart-container" ref={containerRef} style={{ position: 'relative' }}>
-      <h3 className="chart-title">10년마다 올라가는 체온</h3>
+      <h3 className="chart-title">10년마다 올라가는 평균온도</h3>
       <p className="chart-subtitle">
         {cityName}의 10년 단위 평균기온 — 되돌릴 수 없는 상승
       </p>

@@ -90,16 +90,8 @@ export default function Home() {
                   <strong>기준 기간:</strong> 1973-2000년 평균을 기준으로 편차를 계산합니다.
                 </p>
                 <p>
-                  <strong>참고:</strong> 현재 표시되는 데이터는 데모 데이터입니다.
-                  실제 데이터를 사용하려면 기상자료개방포털에서 ASOS 일자료 CSV를 다운로드한 후{' '}
-                  <code className="bg-[var(--background)] px-1.5 py-0.5 rounded text-xs">
-                    data/raw/
-                  </code>{' '}
-                  폴더에 넣고{' '}
-                  <code className="bg-[var(--background)] px-1.5 py-0.5 rounded text-xs">
-                    npx tsx scripts/process-csv.ts
-                  </code>
-                  를 실행하세요.
+                  <strong>참고:</strong> 기상청 공공데이터포털 API를 통해 수집된 실제 관측 데이터를 사용합니다.
+                  매일 자동으로 최신 데이터가 업데이트됩니다.
                 </p>
               </div>
             </section>
