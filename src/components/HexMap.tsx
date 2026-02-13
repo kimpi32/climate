@@ -189,7 +189,7 @@ export default function HexMap({ selectedCity, onCityChange }: HexMapProps) {
         .attr('font-size', '16px')
         .attr('font-weight', '700')
         .attr('letter-spacing', '0.02em')
-        .attr('fill', isDark ? '#fff' : 'var(--foreground)')
+        .attr('fill', '#000')
         .text(city.name);
 
       // Anomaly value
@@ -200,7 +200,7 @@ export default function HexMap({ selectedCity, onCityChange }: HexMapProps) {
           .attr('dominant-baseline', 'middle')
           .attr('font-size', '15px')
           .attr('font-weight', '700')
-          .attr('fill', isDark ? 'rgba(255,255,255,0.95)' : 'var(--foreground)')
+          .attr('fill', '#000')
           .text(`${anomaly > 0 ? '+' : ''}${anomaly.toFixed(1)}℃`);
       }
     });
