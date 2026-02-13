@@ -32,11 +32,10 @@ export const HEATMAP_COLD = '#2166ac';
 export const HEATMAP_NEUTRAL = '#f7f7f7';
 export const HEATMAP_HOT = '#b2182b';
 
-// 최근 3년 강조 색상
+// 최근 2년 강조 색상
 export const RECENT_YEAR_COLORS: Record<number, { color: string; width: number; label: string }> = {
   [new Date().getFullYear()]: { color: '#ef4444', width: 2.5, label: `${new Date().getFullYear()}년` },
-  [new Date().getFullYear() - 1]: { color: '#f97316', width: 2, label: `${new Date().getFullYear() - 1}년` },
-  [new Date().getFullYear() - 2]: { color: '#eab308', width: 1.8, label: `${new Date().getFullYear() - 2}년` },
+  [new Date().getFullYear() - 1]: { color: '#f97316', width: 1.8, label: `${new Date().getFullYear() - 1}년` },
 };
 
 // 차트 색상

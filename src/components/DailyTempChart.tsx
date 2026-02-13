@@ -218,7 +218,7 @@ export default function DailyTempChart({ records, cityName }: DailyTempChartProp
     <div className="chart-container" ref={containerRef} style={{ position: 'relative' }}>
       <h3 className="chart-title">오늘, 역대 몇 번째로 더운 날?</h3>
       <p className="chart-subtitle">
-        {cityName} 매일의 기온을 65년치 겹쳐 보면
+        {cityName}의 65년치 일별 기온 기록
       </p>
       <svg ref={svgRef} />
     </div>

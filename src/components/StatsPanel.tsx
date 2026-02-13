@@ -108,9 +108,9 @@ function StatCard({
 }) {
   return (
     <div className="bg-[var(--background)] rounded-lg p-4 border border-[var(--card-border)]">
-      <p className="text-xs text-[var(--muted)] mb-1">{label}</p>
+      <p className="text-sm text-[var(--muted)] mb-1">{label}</p>
       <p className={`text-2xl font-bold ${color}`}>{value}</p>
-      <p className="text-xs text-[var(--muted)] mt-1">{sub}</p>
+      <p className="text-sm text-[var(--muted)] mt-1">{sub}</p>
     </div>
   );
 }
