@@ -36,7 +36,7 @@ export default function MonthlyHeatmap({ records, cityName }: MonthlyHeatmapProp
     const containerWidth = containerRef.current.clientWidth;
     const margin = { top: 20, right: 60, bottom: 40, left: 55 };
     const width = containerWidth - margin.left - margin.right;
-    const height = Math.max(years.length * 8, 300);
+    const height = Math.max(years.length * 11, 400);
 
     const svg = d3.select(svgRef.current);
     svg.selectAll('*').remove();
@@ -69,7 +69,7 @@ export default function MonthlyHeatmap({ records, cityName }: MonthlyHeatmapProp
       )
       .selectAll('text')
       .attr('fill', '#94a3b8')
-      .attr('font-size', '10px');
+      .attr('font-size', '13px');
 
     // Y axis (years) - show every 5th year
     const yTicks = years.filter((y) => y % 5 === 0);
@@ -81,7 +81,7 @@ export default function MonthlyHeatmap({ records, cityName }: MonthlyHeatmapProp
       )
       .selectAll('text')
       .attr('fill', '#94a3b8')
-      .attr('font-size', '10px');
+      .attr('font-size', '12px');
 
     // Cells
     g.selectAll('.cell')
@@ -173,7 +173,7 @@ export default function MonthlyHeatmap({ records, cityName }: MonthlyHeatmapProp
         {cityName} 월별 기온편차 — 붉을수록 평년보다 뜨겁다
       </p>
       {climateNormalMonthly && (
-        <div className="flex flex-wrap gap-x-2 gap-y-1 text-xs text-[var(--muted)] mb-3 px-1">
+        <div className="flex flex-wrap gap-x-3 gap-y-1 text-sm text-[var(--muted)] mb-3 px-1">
           <span className="font-medium text-[var(--foreground)]">기후평년값(1991-2020):</span>
           {climateNormalMonthly.map((m) => (
             <span key={m.month}>
