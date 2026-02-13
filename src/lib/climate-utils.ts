@@ -243,18 +243,20 @@ export function calcCityStats(records: DailyRecord[]): CityStats {
 }
 
 /**
- * 이동평균 계산
+ * 이동평균 계산 (양쪽 끝은 가용 데이터로 축소 윈도우 적용)
  */
 export function movingAverage(data: { year: number; value: number }[], window: number): { year: number; value: number }[] {
   const result: { year: number; value: number }[] = [];
   const half = Math.floor(window / 2);
 
-  for (let i = half; i < data.length - half; i++) {
+  for (let i = 0; i < data.length; i++) {
+    const start = Math.max(0, i - half);
+    const end = Math.min(data.length - 1, i + half);
     let sum = 0;
-    for (let j = i - half; j <= i + half; j++) {
+    for (let j = start; j <= end; j++) {
       sum += data[j].value;
     }
-    result.push({ year: data[i].year, value: sum / window });
+    result.push({ year: data[i].year, value: sum / (end - start + 1) });
   }
 
   return result;
