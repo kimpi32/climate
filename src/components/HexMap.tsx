@@ -186,8 +186,8 @@ export default function HexMap({ selectedCity, onCityChange }: HexMapProps) {
         .attr('x', cx).attr('y', cy - 10)
         .attr('text-anchor', 'middle')
         .attr('dominant-baseline', 'middle')
-        .attr('font-size', '18px')
-        .attr('font-weight', '800')
+        .attr('font-size', '16px')
+        .attr('font-weight', '700')
         .attr('letter-spacing', '0.02em')
         .style('fill', '#000')
         .text(city.name);
@@ -195,10 +195,10 @@ export default function HexMap({ selectedCity, onCityChange }: HexMapProps) {
       // Anomaly value
       if (anomaly !== undefined) {
         g.append('text')
-          .attr('x', cx).attr('y', cy + 16)
+          .attr('x', cx).attr('y', cy + 14)
           .attr('text-anchor', 'middle')
           .attr('dominant-baseline', 'middle')
-          .attr('font-size', '16px')
+          .attr('font-size', '15px')
           .attr('font-weight', '700')
           .style('fill', '#000')
           .text(`${anomaly > 0 ? '+' : ''}${anomaly.toFixed(1)}℃`);
