@@ -105,9 +105,9 @@ export default function WarmingStripes({ records, cityName }: WarmingStripesProp
 
   return (
     <div className="chart-container" ref={containerRef} style={{ position: 'relative' }}>
-      <h3 className="chart-title">뜨거워지는 색깔</h3>
+      <h3 className="chart-title">뜨거워지는 {cityName}</h3>
       <p className="chart-subtitle">
-        {cityName}의 연평균 기온 변화 — 파란 해가 사라지고 있다
+        연평균 기온 변화 — 파란 해가 사라지고 있다
       </p>
       <svg ref={svgRef} />
       <div className="flex justify-between mt-3 text-xs text-[var(--muted)]">

@@ -40,7 +40,7 @@ export default function StatsPanel({ records, cityName }: StatsPanelProps) {
   return (
     <div className="chart-container">
       <h3 className="chart-title">숫자로 보는 위기</h3>
-      <p className="chart-subtitle">{cityName}이 기록한 극한의 숫자들</p>
+      <p className="chart-subtitle">{cityName}에서 기록된 극한의 숫자들</p>
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
         {/* 역대 최고기온 */}
