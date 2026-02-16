@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useMemo } from 'react';
 import * as d3 from 'd3';
 import type { DailyRecord } from '@/types/climate';
-import { calcForecast } from '@/lib/climate-utils';
+import { calcForecast, calcBaselineAnnualMean } from '@/lib/climate-utils';
 import { CHART_COLORS, ANALYSIS_COLORS } from '@/lib/constants';
 
 interface ForecastChartProps {
@@ -11,9 +11,43 @@ interface ForecastChartProps {
   cityName: string;
 }
 
+const HORIZONS = [10, 20, 30, 50];
+
 export default function ForecastChart({ records, cityName }: ForecastChartProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const predictions = useMemo(() => {
+    if (records.length === 0) return null;
+    const result = calcForecast(records, 10);
+    if (result.historical.length === 0) return null;
+    const baselineMean = calcBaselineAnnualMean(records);
+    const lastYear = result.historical[result.historical.length - 1].year;
+    const { slope, intercept } = result;
+
+    // 표준오차 계산 (calcForecast 내부 로직 재사용)
+    const xs = result.historical.map((d) => d.year);
+    const ys = result.historical.map((d) => d.anomaly);
+    const n = xs.length;
+    const xMean = xs.reduce((a, b) => a + b, 0) / n;
+    const sxx = xs.reduce((s, x) => s + (x - xMean) ** 2, 0);
+    const residuals = ys.map((y, i) => y - (slope * xs[i] + intercept));
+    const se = Math.sqrt(residuals.reduce((s, r) => s + r * r, 0) / (n - 2));
+
+    return HORIZONS.map((h) => {
+      const targetYear = lastYear + h;
+      const anomaly = slope * targetYear + intercept;
+      const margin = 1.96 * se * Math.sqrt(1 + 1 / n + (targetYear - xMean) ** 2 / sxx);
+      return {
+        horizon: h,
+        year: targetYear,
+        temp: baselineMean + anomaly,
+        lower: baselineMean + anomaly - margin,
+        upper: baselineMean + anomaly + margin,
+        anomaly,
+      };
+    });
+  }, [records]);
 
   useEffect(() => {
     if (!svgRef.current || !containerRef.current || records.length === 0) return;
@@ -252,6 +286,29 @@ export default function ForecastChart({ records, cityName }: ForecastChartProps)
         {cityName}의 선형회귀 기반 기온 편차 추세와 95% 예측구간
       </p>
       <svg ref={svgRef} />
+
+      {/* 미래 예측 온도 카드 */}
+      {predictions && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-5">
+          {predictions.map((p) => (
+            <div
+              key={p.horizon}
+              className="bg-[var(--background)] rounded-lg p-4 border border-[var(--card-border)] text-center"
+            >
+              <p className="text-sm text-[var(--muted)] mb-1">{p.horizon}년 후 ({p.year}년)</p>
+              <p className="text-2xl font-bold text-[var(--accent)]">
+                {p.temp.toFixed(1)}℃
+              </p>
+              <p className="text-xs text-[var(--muted)] mt-1">
+                {p.lower.toFixed(1)} ~ {p.upper.toFixed(1)}℃
+              </p>
+              <p className="text-xs mt-1" style={{ color: p.anomaly >= 0 ? '#ef4444' : '#3b82f6' }}>
+                {p.anomaly >= 0 ? '+' : ''}{p.anomaly.toFixed(2)}℃ 편차
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
