@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useMemo } from 'react';
+import { useEffect, useRef, useMemo, useState } from 'react';
 import * as d3 from 'd3';
 import type { DailyRecord } from '@/types/climate';
 import { calcForecast, calcBaselineAnnualMean, calcExtremeDayProjections } from '@/lib/climate-utils';
@@ -323,19 +323,10 @@ export default function ForecastChart({ records, cityName }: ForecastChartProps)
                 </p>
 
                 {ext && (
-                  <div className="mt-3 pt-3 border-t border-[var(--card-border)] space-y-1.5 text-left">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-[var(--muted)]">열대야</span>
-                      <span className="font-semibold text-amber-400">{ext.tropicalNights}일</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-[var(--muted)]">폭염일</span>
-                      <span className="font-semibold text-rose-400">{ext.heatwaveDays}일</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-[var(--muted)]">여름일</span>
-                      <span className="font-semibold text-orange-400">{ext.summerDays}일</span>
-                    </div>
+                  <div className="mt-3 pt-3 border-t border-[var(--card-border)] space-y-2.5 text-left">
+                    <ExtremeRow label="열대야" value={ext.tropicalNights} color="text-amber-400" tooltip="일 최저기온 25℃ 이상" />
+                    <ExtremeRow label="폭염일" value={ext.heatwaveDays} color="text-rose-400" tooltip="일 최고기온 33℃ 이상" />
+                    <ExtremeRow label="여름일" value={ext.summerDays} color="text-orange-400" tooltip="일 최고기온 25℃ 이상" />
                   </div>
                 )}
               </div>
@@ -350,6 +341,40 @@ export default function ForecastChart({ records, cityName }: ForecastChartProps)
           현재(최근 5년 평균) — 열대야 {forecastData.recentAvg.tropicalNights.toFixed(0)}일 / 폭염 {forecastData.recentAvg.heatwaveDays.toFixed(0)}일 / 여름 {forecastData.recentAvg.summerDays.toFixed(0)}일
         </p>
       )}
+    </div>
+  );
+}
+
+function ExtremeRow({ label, value, color, tooltip }: {
+  label: string;
+  value: number;
+  color: string;
+  tooltip: string;
+}) {
+  const [show, setShow] = useState(false);
+
+  return (
+    <div className="flex justify-between items-center">
+      <span className="text-base text-[var(--muted)] flex items-center gap-1">
+        {label}
+        <span className="relative inline-block">
+          <button
+            type="button"
+            onClick={() => setShow((v) => !v)}
+            onMouseEnter={() => setShow(true)}
+            onMouseLeave={() => setShow(false)}
+            className="inline-flex items-center justify-center w-[18px] h-[18px] rounded-full border border-[var(--card-border)] text-[11px] font-medium text-[var(--muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)] transition-colors cursor-help"
+          >
+            ?
+          </button>
+          {show && (
+            <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1.5 text-xs rounded-md bg-[var(--foreground)] text-[var(--background)] whitespace-nowrap z-10 shadow-lg">
+              {tooltip}
+            </span>
+          )}
+        </span>
+      </span>
+      <span className={`text-lg font-bold ${color}`}>{value}일</span>
     </div>
   );
 }
