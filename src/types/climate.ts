@@ -57,3 +57,49 @@ export interface CityStats {
   tropicalNights: { year: number; count: number }[];
   heatwaveDays: { year: number; count: number }[];
 }
+
+// --- 분석 기능 타입 ---
+
+export interface ForecastPoint {
+  year: number;
+  value: number;       // 회귀 예측값
+  lower: number;       // 95% 하한
+  upper: number;       // 95% 상한
+}
+
+export interface ForecastResult {
+  historical: AnnualAnomaly[];
+  forecast: ForecastPoint[];
+  slope: number;         // 연간 변화율 (℃/yr)
+  intercept: number;
+  rSquared: number;
+  slopePerDecade: number; // 10년당 변화율
+}
+
+export interface AnomalyFlag {
+  year: number;
+  anomaly: number;
+  avgTemp: number;
+  zScore: number;
+  isAnomaly: boolean;   // |z| > threshold
+}
+
+export interface AnomalyDetectionResult {
+  flags: AnomalyFlag[];
+  mean: number;
+  std: number;
+  threshold: number;
+}
+
+export interface DecompositionPoint {
+  year: number;
+  month: number;
+  observed: number;
+  trend: number | null;
+  seasonal: number;
+  residual: number | null;
+}
+
+export interface DecompositionResult {
+  points: DecompositionPoint[];
+}

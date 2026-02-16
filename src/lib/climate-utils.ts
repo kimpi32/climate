@@ -5,6 +5,12 @@ import type {
   DecadeStats,
   CityStats,
   ExtremeRecord,
+  ForecastResult,
+  ForecastPoint,
+  AnomalyDetectionResult,
+  AnomalyFlag,
+  DecompositionResult,
+  DecompositionPoint,
 } from '@/types/climate';
 import { BASELINE_START, BASELINE_END } from './constants';
 
@@ -282,4 +288,154 @@ export function groupByYear(records: DailyRecord[]): Map<number, { dayOfYear: nu
   grouped.forEach((days) => days.sort((a, b) => a.dayOfYear - b.dayOfYear));
 
   return grouped;
+}
+
+// =================================================================
+// 분석 기능
+// =================================================================
+
+/**
+ * OLS 선형회귀 (내부 헬퍼)
+ */
+function linearRegression(xs: number[], ys: number[]): { slope: number; intercept: number; rSquared: number } {
+  const n = xs.length;
+  let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0, sumYY = 0;
+  for (let i = 0; i < n; i++) {
+    sumX += xs[i];
+    sumY += ys[i];
+    sumXY += xs[i] * ys[i];
+    sumXX += xs[i] * xs[i];
+    sumYY += ys[i] * ys[i];
+  }
+  const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+  const intercept = (sumY - slope * sumX) / n;
+
+  // R²
+  const yMean = sumY / n;
+  let ssTot = 0, ssRes = 0;
+  for (let i = 0; i < n; i++) {
+    ssTot += (ys[i] - yMean) ** 2;
+    ssRes += (ys[i] - (slope * xs[i] + intercept)) ** 2;
+  }
+  const rSquared = ssTot === 0 ? 0 : 1 - ssRes / ssTot;
+
+  return { slope, intercept, rSquared };
+}
+
+/**
+ * 기온 예측: 연 편차 선형회귀 + 95% 예측구간
+ */
+export function calcForecast(records: DailyRecord[], yearsAhead = 10): ForecastResult {
+  const anomalies = calcAnnualAnomalies(records);
+  const xs = anomalies.map((d) => d.year);
+  const ys = anomalies.map((d) => d.anomaly);
+  const { slope, intercept, rSquared } = linearRegression(xs, ys);
+
+  const n = xs.length;
+  const xMean = xs.reduce((a, b) => a + b, 0) / n;
+  const sxx = xs.reduce((s, x) => s + (x - xMean) ** 2, 0);
+  const residuals = ys.map((y, i) => y - (slope * xs[i] + intercept));
+  const se = Math.sqrt(residuals.reduce((s, r) => s + r * r, 0) / (n - 2));
+  const tCrit = 1.96; // 95% 근사
+
+  const lastYear = xs[xs.length - 1];
+  const forecast: ForecastPoint[] = [];
+  for (let y = lastYear + 1; y <= lastYear + yearsAhead; y++) {
+    const pred = slope * y + intercept;
+    const margin = tCrit * se * Math.sqrt(1 + 1 / n + (y - xMean) ** 2 / sxx);
+    forecast.push({ year: y, value: pred, lower: pred - margin, upper: pred + margin });
+  }
+
+  return {
+    historical: anomalies,
+    forecast,
+    slope,
+    intercept,
+    rSquared,
+    slopePerDecade: slope * 10,
+  };
+}
+
+/**
+ * Z-score 기반 이상 기온 탐지
+ */
+export function detectAnomalies(records: DailyRecord[], threshold = 2.0): AnomalyDetectionResult {
+  const anomalies = calcAnnualAnomalies(records);
+  const values = anomalies.map((d) => d.anomaly);
+  const mean = values.reduce((a, b) => a + b, 0) / values.length;
+  const std = Math.sqrt(values.reduce((s, v) => s + (v - mean) ** 2, 0) / values.length);
+
+  const flags: AnomalyFlag[] = anomalies.map((d) => {
+    const z = std === 0 ? 0 : (d.anomaly - mean) / std;
+    return {
+      year: d.year,
+      anomaly: d.anomaly,
+      avgTemp: d.avgTemp,
+      zScore: z,
+      isAnomaly: Math.abs(z) > threshold,
+    };
+  });
+
+  return { flags, mean, std, threshold };
+}
+
+/**
+ * 고전적 계절 분해 (12개월 중심 이동평균)
+ */
+export function decomposeSeasonality(records: DailyRecord[]): DecompositionResult {
+  // 월별 평균기온 시계열 구축
+  const monthlyMap = new Map<string, number[]>(); // "YYYY-MM" → temps
+  records.forEach((r) => {
+    const key = r.date.slice(0, 7);
+    if (!monthlyMap.has(key)) monthlyMap.set(key, []);
+    monthlyMap.get(key)!.push(r.avgTemp);
+  });
+
+  const series: { year: number; month: number; value: number }[] = [];
+  const sortedKeys = Array.from(monthlyMap.keys()).sort();
+  for (const key of sortedKeys) {
+    const temps = monthlyMap.get(key)!;
+    if (temps.length < 20) continue;
+    series.push({
+      year: parseInt(key.slice(0, 4)),
+      month: parseInt(key.slice(5, 7)),
+      value: temps.reduce((a, b) => a + b, 0) / temps.length,
+    });
+  }
+
+  // 12개월 중심 이동평균 (추세)
+  const trend: (number | null)[] = new Array(series.length).fill(null);
+  for (let i = 6; i < series.length - 5; i++) {
+    // 2×12 MA: 평균(12개 + 앞뒤 절반) = (0.5*x[i-6] + x[i-5..i+5] + 0.5*x[i+6]) / 12
+    let sum = 0;
+    sum += series[i - 6].value * 0.5;
+    for (let j = i - 5; j <= i + 5; j++) sum += series[j].value;
+    sum += series[i + 6].value * 0.5;
+    trend[i] = sum / 12;
+  }
+
+  // 계절성분: 추세를 빼고 월별 평균
+  const seasonalByMonth = new Map<number, number[]>();
+  for (let m = 1; m <= 12; m++) seasonalByMonth.set(m, []);
+  for (let i = 0; i < series.length; i++) {
+    if (trend[i] !== null) {
+      seasonalByMonth.get(series[i].month)!.push(series[i].value - trend[i]!);
+    }
+  }
+  const seasonalIndex = new Map<number, number>();
+  seasonalByMonth.forEach((vals, m) => {
+    seasonalIndex.set(m, vals.length > 0 ? vals.reduce((a, b) => a + b, 0) / vals.length : 0);
+  });
+
+  // 조합
+  const points: DecompositionPoint[] = series.map((s, i) => ({
+    year: s.year,
+    month: s.month,
+    observed: s.value,
+    trend: trend[i],
+    seasonal: seasonalIndex.get(s.month) || 0,
+    residual: trend[i] !== null ? s.value - trend[i]! - (seasonalIndex.get(s.month) || 0) : null,
+  }));
+
+  return { points };
 }

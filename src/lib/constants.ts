@@ -68,3 +68,16 @@ export const MONTHS_EN = [
   'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
 ];
+
+// 분석 차트 색상
+export const ANALYSIS_COLORS = {
+  forecast: '#8b5cf6',       // 보라 — 예측선
+  forecastBand: 'rgba(139, 92, 246, 0.15)', // 신뢰구간 밴드
+  anomalyHot: '#ef4444',     // 이상 고온
+  anomalyCold: '#3b82f6',    // 이상 저온
+  sigmaLine: '#facc15',      // ±2σ 기준선
+  decomTrend: '#f59e0b',     // 추세
+  decomSeasonal: '#10b981',  // 계절성
+  decomResidual: '#6366f1',  // 잔차
+  decomObserved: '#94a3b8',  // 관측값
+};

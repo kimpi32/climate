@@ -9,6 +9,9 @@ import DailyTempChart from '@/components/DailyTempChart';
 import AnnualAnomalyChart from '@/components/AnnualAnomalyChart';
 import MonthlyHeatmap from '@/components/MonthlyHeatmap';
 import DecadeSummary from '@/components/DecadeSummary';
+import AnomalyDetectionChart from '@/components/AnomalyDetectionChart';
+import ForecastChart from '@/components/ForecastChart';
+import SeasonalDecompositionChart from '@/components/SeasonalDecompositionChart';
 import StatsPanel from '@/components/StatsPanel';
 import { CITIES } from '@/lib/constants';
 import type { CityData, DailyRecord } from '@/types/climate';
@@ -83,6 +86,21 @@ export default function Home() {
             {/* Decade Summary */}
             <section id="decade-summary">
               <DecadeSummary records={records} cityName={cityInfo.name} />
+            </section>
+
+            {/* Anomaly Detection */}
+            <section id="anomaly-detection">
+              <AnomalyDetectionChart records={records} cityName={cityInfo.name} />
+            </section>
+
+            {/* Forecast */}
+            <section id="forecast">
+              <ForecastChart records={records} cityName={cityInfo.name} />
+            </section>
+
+            {/* Seasonal Decomposition */}
+            <section id="seasonal-decomposition">
+              <SeasonalDecompositionChart records={records} cityName={cityInfo.name} />
             </section>
 
             {/* Data Source */}
