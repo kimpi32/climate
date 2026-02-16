@@ -108,7 +108,10 @@ export default function ForecastChart({ records, cityName }: ForecastChartProps)
 
     const { projections, recentAvg } = calcExtremeDayProjections(records, HORIZONS);
 
-    return { predictions, projections, recentAvg, pastCards };
+    // 첫 연대 기준 온도 (비교 기준점)
+    const firstDecadeTemp = pastCards.length > 0 ? pastCards[0].temp : baselineMean;
+
+    return { predictions, projections, recentAvg, pastCards, firstDecadeTemp, baselineMean };
   }, [records]);
 
   useEffect(() => {
@@ -338,28 +341,37 @@ export default function ForecastChart({ records, cityName }: ForecastChartProps)
         <>
           {/* 과거 실측 */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-            {forecastData.pastCards.map((p) => (
-              <div
-                key={p.label}
-                className="rounded-xl p-4 border border-[var(--card-border)] text-center"
-                style={{ background: 'rgba(255,255,255,0.03)' }}
-              >
-                <p className="text-base font-semibold text-[var(--muted)] mb-2">
-                  {p.label} <span className="opacity-60 text-sm">평균</span>
-                </p>
-                <p className="text-3xl font-black mb-1 text-[var(--foreground)]">
-                  {p.temp.toFixed(1)}℃
-                </p>
-                <p className="text-sm font-semibold" style={{ color: p.anomaly >= 0 ? '#94a3b8' : '#3b82f6' }}>
-                  {p.anomaly >= 0 ? '+' : ''}{p.anomaly.toFixed(2)}℃ 편차
-                </p>
-                <div className="mt-3 pt-3 border-t border-[var(--card-border)] space-y-2 text-left">
-                  <ExtremeRow label="열대야" value={p.tropicalNights} color="text-amber-400/70" tooltip="일 최저기온 25℃ 이상" />
-                  <ExtremeRow label="폭염일" value={p.heatwaveDays} color="text-rose-400/70" tooltip="일 최고기온 33℃ 이상" />
-                  <ExtremeRow label="여름일" value={p.summerDays} color="text-orange-400/70" tooltip="일 최고기온 25℃ 이상" />
+            {forecastData.pastCards.map((p, i) => {
+              const diff = p.temp - forecastData.firstDecadeTemp;
+              const isFirst = i === 0;
+              return (
+                <div
+                  key={p.label}
+                  className="rounded-xl p-4 border border-[var(--card-border)] text-center"
+                  style={{ background: 'rgba(255,255,255,0.03)' }}
+                >
+                  <p className="text-base font-semibold text-[var(--muted)] mb-3">
+                    {p.label} <span className="opacity-60 text-sm">평균</span>
+                  </p>
+                  <p className="text-sm text-[var(--muted)]">연평균 기온</p>
+                  <p className="text-3xl font-black text-[var(--foreground)]">
+                    {p.temp.toFixed(1)}℃
+                  </p>
+                  {isFirst ? (
+                    <p className="text-sm text-[var(--muted)] mt-1">기준</p>
+                  ) : (
+                    <p className="text-sm font-semibold mt-1" style={{ color: diff > 0 ? '#ef4444' : '#3b82f6' }}>
+                      {forecastData.pastCards[0].label} 대비 {diff >= 0 ? '+' : ''}{diff.toFixed(2)}℃
+                    </p>
+                  )}
+                  <div className="mt-3 pt-3 border-t border-[var(--card-border)] space-y-2 text-left">
+                    <ExtremeRow label="열대야" value={p.tropicalNights} color="text-amber-400/70" tooltip="일 최저기온 25℃ 이상" />
+                    <ExtremeRow label="폭염일" value={p.heatwaveDays} color="text-rose-400/70" tooltip="일 최고기온 33℃ 이상" />
+                    <ExtremeRow label="여름일" value={p.summerDays} color="text-orange-400/70" tooltip="일 최고기온 25℃ 이상" />
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* 구분선 */}
@@ -373,6 +385,7 @@ export default function ForecastChart({ records, cityName }: ForecastChartProps)
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
             {forecastData.predictions.map((p, i) => {
               const ext = forecastData.projections[i];
+              const diff = p.temp - forecastData.firstDecadeTemp;
               const color = anomalyColor(p.anomaly);
               const borderCol = anomalyBorderColor(p.anomaly);
               return (
@@ -384,17 +397,15 @@ export default function ForecastChart({ records, cityName }: ForecastChartProps)
                     background: `linear-gradient(135deg, rgba(0,0,0,0.3), rgba(0,0,0,0.1))`,
                   }}
                 >
-                  <p className="text-base font-semibold text-[var(--foreground)] mb-2">
+                  <p className="text-base font-semibold text-[var(--foreground)] mb-3">
                     {p.horizon}년 후 <span className="text-[var(--muted)]">({p.year})</span>
                   </p>
-                  <p className="text-4xl font-black mb-1" style={{ color }}>
+                  <p className="text-sm text-[var(--muted)]">예측 연평균</p>
+                  <p className="text-4xl font-black" style={{ color }}>
                     {p.temp.toFixed(1)}℃
                   </p>
-                  <p className="text-sm text-[var(--muted)]">
-                    {p.lower.toFixed(1)} ~ {p.upper.toFixed(1)}℃
-                  </p>
                   <p className="text-sm font-semibold mt-1" style={{ color }}>
-                    {p.anomaly >= 0 ? '+' : ''}{p.anomaly.toFixed(2)}℃ 편차
+                    {forecastData.pastCards[0]?.label ?? '기준'} 대비 {diff >= 0 ? '+' : ''}{diff.toFixed(2)}℃
                   </p>
 
                   {ext && (
