@@ -405,8 +405,8 @@ export function decomposeSeasonality(records: DailyRecord[]): DecompositionResul
 
   // 12개월 중심 이동평균 (추세)
   const trend: (number | null)[] = new Array(series.length).fill(null);
-  for (let i = 6; i < series.length - 5; i++) {
-    // 2×12 MA: 평균(12개 + 앞뒤 절반) = (0.5*x[i-6] + x[i-5..i+5] + 0.5*x[i+6]) / 12
+  for (let i = 6; i < series.length - 6; i++) {
+    // 2×12 MA: (0.5*x[i-6] + x[i-5..i+5] + 0.5*x[i+6]) / 12
     let sum = 0;
     sum += series[i - 6].value * 0.5;
     for (let j = i - 5; j <= i + 5; j++) sum += series[j].value;
