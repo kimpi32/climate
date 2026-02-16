@@ -106,12 +106,35 @@ export default function ForecastChart({ records, cityName }: ForecastChartProps)
       };
     }).filter((v): v is NonNullable<typeof v> => v != null);
 
+    // 최근 3년 (2023-2025) 실측
+    const RECENT_YEARS = [2023, 2024, 2025];
+    const recentYearEntries = RECENT_YEARS
+      .map((y) => ({ year: y, data: yearMap.get(y) }))
+      .filter((e): e is { year: number; data: NonNullable<typeof e.data> } => e.data != null && e.data.temps.length >= 300);
+
+    const recentCard = recentYearEntries.length > 0 ? (() => {
+      const avgTemp = recentYearEntries.reduce((s, { data }) =>
+        s + data.temps.reduce((a, b) => a + b, 0) / data.temps.length, 0) / recentYearEntries.length;
+      const anomaly = avgTemp - baselineMean;
+      const yearRange = recentYearEntries.length === 1
+        ? `${recentYearEntries[0].year}년`
+        : `${recentYearEntries[0].year}-${recentYearEntries[recentYearEntries.length - 1].year}`;
+      return {
+        label: `최근 (${yearRange})`,
+        temp: avgTemp,
+        anomaly,
+        tropicalNights: Math.round(recentYearEntries.reduce((s, { data }) => s + data.tn, 0) / recentYearEntries.length),
+        heatwaveDays: Math.round(recentYearEntries.reduce((s, { data }) => s + data.hw, 0) / recentYearEntries.length),
+        summerDays: Math.round(recentYearEntries.reduce((s, { data }) => s + data.sd, 0) / recentYearEntries.length),
+      };
+    })() : null;
+
     const { projections, recentAvg } = calcExtremeDayProjections(records, HORIZONS);
 
     // 첫 연대 기준 온도 (비교 기준점)
     const firstDecadeTemp = pastCards.length > 0 ? pastCards[0].temp : baselineMean;
 
-    return { predictions, projections, recentAvg, pastCards, firstDecadeTemp, baselineMean };
+    return { predictions, projections, recentAvg, pastCards, recentCard, firstDecadeTemp, baselineMean };
   }, [records]);
 
   useEffect(() => {
@@ -374,10 +397,45 @@ export default function ForecastChart({ records, cityName }: ForecastChartProps)
             })}
           </div>
 
+          {/* 최근 실측 카드 */}
+          {forecastData.recentCard && (() => {
+            const rc = forecastData.recentCard;
+            const diff = rc.temp - forecastData.firstDecadeTemp;
+            const color = anomalyColor(rc.anomaly);
+            const borderCol = anomalyBorderColor(rc.anomaly);
+            return (
+              <div className="flex justify-center mb-4">
+                <div
+                  className="rounded-xl p-5 border-2 text-center w-full max-w-xs"
+                  style={{
+                    borderColor: borderCol,
+                    background: `linear-gradient(135deg, rgba(0,0,0,0.25), rgba(0,0,0,0.08))`,
+                  }}
+                >
+                  <p className="text-lg font-bold text-[var(--foreground)] mb-3">
+                    {rc.label}
+                  </p>
+                  <p className="text-sm text-[var(--muted)]">연평균 기온</p>
+                  <p className="text-4xl font-black" style={{ color }}>
+                    {rc.temp.toFixed(1)}℃
+                  </p>
+                  <p className="text-sm font-semibold mt-1" style={{ color }}>
+                    {forecastData.pastCards[0]?.label ?? '기준'} 대비 {diff >= 0 ? '+' : ''}{diff.toFixed(2)}℃
+                  </p>
+                  <div className="mt-3 pt-3 border-t border-[var(--card-border)] space-y-2.5 text-left">
+                    <ExtremeRow label="열대야" value={rc.tropicalNights} color="text-amber-400" tooltip="일 최저기온 25℃ 이상" />
+                    <ExtremeRow label="폭염일" value={rc.heatwaveDays} color="text-rose-400" tooltip="일 최고기온 33℃ 이상" />
+                    <ExtremeRow label="여름일" value={rc.summerDays} color="text-orange-400" tooltip="일 최고기온 25℃ 이상" />
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
           {/* 구분선 */}
           <div className="flex items-center gap-3 my-4">
             <div className="flex-1 h-px bg-[var(--card-border)]" />
-            <span className="text-sm font-semibold text-[var(--muted)]">현재 → 미래 예측</span>
+            <span className="text-sm font-semibold text-[var(--muted)]">미래 예측</span>
             <div className="flex-1 h-px bg-[var(--card-border)]" />
           </div>
 
