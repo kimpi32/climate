@@ -50,6 +50,7 @@ export default function ForecastChart({ records, cityName }: ForecastChartProps)
     const residuals = ys.map((y, i) => y - (slope * xs[i] + intercept));
     const se = Math.sqrt(residuals.reduce((s, r) => s + r * r, 0) / (n - 2));
 
+    // 미래 예측
     const predictions = HORIZONS.map((h) => {
       const targetYear = lastYear + h;
       const anomaly = slope * targetYear + intercept;
@@ -64,9 +65,43 @@ export default function ForecastChart({ records, cityName }: ForecastChartProps)
       };
     });
 
+    // 과거 실측 (5년 평균으로 안정화)
+    const yearMap = new Map<number, { temps: number[]; tn: number; hw: number; sd: number }>();
+    records.forEach((r) => {
+      const y = parseInt(r.date.slice(0, 4));
+      if (!yearMap.has(y)) yearMap.set(y, { temps: [], tn: 0, hw: 0, sd: 0 });
+      const entry = yearMap.get(y)!;
+      entry.temps.push(r.avgTemp);
+      if (r.minTemp >= 25) entry.tn++;
+      if (r.maxTemp >= 33) entry.hw++;
+      if (r.maxTemp >= 25) entry.sd++;
+    });
+
+    const pastCards = [...HORIZONS].reverse().map((h) => {
+      const targetYear = lastYear - h;
+      // 해당 연도 ±2년 평균 (5년 윈도우)
+      const window = [-2, -1, 0, 1, 2]
+        .map((d) => yearMap.get(targetYear + d))
+        .filter((v): v is NonNullable<typeof v> => v != null && v.temps.length >= 300);
+
+      if (window.length === 0) return null;
+
+      const avgTemp = window.reduce((s, w) => s + w.temps.reduce((a, b) => a + b, 0) / w.temps.length, 0) / window.length;
+      const anomaly = avgTemp - baselineMean;
+      return {
+        horizon: -h,
+        year: targetYear,
+        temp: avgTemp,
+        anomaly,
+        tropicalNights: Math.round(window.reduce((s, w) => s + w.tn, 0) / window.length),
+        heatwaveDays: Math.round(window.reduce((s, w) => s + w.hw, 0) / window.length),
+        summerDays: Math.round(window.reduce((s, w) => s + w.sd, 0) / window.length),
+      };
+    }).filter((v): v is NonNullable<typeof v> => v != null);
+
     const { projections, recentAvg } = calcExtremeDayProjections(records, HORIZONS);
 
-    return { predictions, projections, recentAvg };
+    return { predictions, projections, recentAvg, pastCards };
   }, [records]);
 
   useEffect(() => {
@@ -291,56 +326,89 @@ export default function ForecastChart({ records, cityName }: ForecastChartProps)
       <p className="chart-subtitle">
         {cityName}의 선형회귀 기반 기온 편차 추세와 95% 예측구간
       </p>
-      <svg ref={svgRef} />
-
-      {/* 미래 예측 카드 */}
+      {/* 과거 → 미래 타임라인 카드 */}
       {forecastData && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-6">
-          {forecastData.predictions.map((p, i) => {
-            const ext = forecastData.projections[i];
-            const color = anomalyColor(p.anomaly);
-            const borderCol = anomalyBorderColor(p.anomaly);
-            return (
+        <>
+          {/* 과거 실측 */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+            {forecastData.pastCards.map((p) => (
               <div
                 key={p.horizon}
-                className="rounded-xl p-4 border-2 text-center"
-                style={{
-                  borderColor: borderCol,
-                  background: `linear-gradient(135deg, rgba(0,0,0,0.3), rgba(0,0,0,0.1))`,
-                }}
+                className="rounded-xl p-4 border border-[var(--card-border)] text-center"
+                style={{ background: 'rgba(255,255,255,0.03)' }}
               >
-                <p className="text-base font-semibold text-[var(--foreground)] mb-2">
-                  {p.horizon}년 후 <span className="text-[var(--muted)]">({p.year})</span>
+                <p className="text-base font-semibold text-[var(--muted)] mb-2">
+                  {Math.abs(p.horizon)}년 전 <span className="opacity-60">({p.year})</span>
                 </p>
-                <p className="text-4xl font-black mb-1" style={{ color }}>
+                <p className="text-3xl font-black mb-1 text-[var(--foreground)]">
                   {p.temp.toFixed(1)}℃
                 </p>
-                <p className="text-sm text-[var(--muted)]">
-                  {p.lower.toFixed(1)} ~ {p.upper.toFixed(1)}℃
-                </p>
-                <p className="text-sm font-semibold mt-1" style={{ color }}>
+                <p className="text-sm font-semibold" style={{ color: p.anomaly >= 0 ? '#94a3b8' : '#3b82f6' }}>
                   {p.anomaly >= 0 ? '+' : ''}{p.anomaly.toFixed(2)}℃ 편차
                 </p>
-
-                {ext && (
-                  <div className="mt-3 pt-3 border-t border-[var(--card-border)] space-y-2.5 text-left">
-                    <ExtremeRow label="열대야" value={ext.tropicalNights} color="text-amber-400" tooltip="일 최저기온 25℃ 이상" />
-                    <ExtremeRow label="폭염일" value={ext.heatwaveDays} color="text-rose-400" tooltip="일 최고기온 33℃ 이상" />
-                    <ExtremeRow label="여름일" value={ext.summerDays} color="text-orange-400" tooltip="일 최고기온 25℃ 이상" />
-                  </div>
-                )}
+                <div className="mt-3 pt-3 border-t border-[var(--card-border)] space-y-2 text-left">
+                  <ExtremeRow label="열대야" value={p.tropicalNights} color="text-amber-400/70" tooltip="일 최저기온 25℃ 이상" />
+                  <ExtremeRow label="폭염일" value={p.heatwaveDays} color="text-rose-400/70" tooltip="일 최고기온 33℃ 이상" />
+                  <ExtremeRow label="여름일" value={p.summerDays} color="text-orange-400/70" tooltip="일 최고기온 25℃ 이상" />
+                </div>
               </div>
-            );
-          })}
-        </div>
+            ))}
+          </div>
+
+          {/* 구분선 */}
+          <div className="flex items-center gap-3 my-4">
+            <div className="flex-1 h-px bg-[var(--card-border)]" />
+            <span className="text-sm font-semibold text-[var(--muted)]">현재 → 미래 예측</span>
+            <div className="flex-1 h-px bg-[var(--card-border)]" />
+          </div>
+
+          {/* 미래 예측 */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+            {forecastData.predictions.map((p, i) => {
+              const ext = forecastData.projections[i];
+              const color = anomalyColor(p.anomaly);
+              const borderCol = anomalyBorderColor(p.anomaly);
+              return (
+                <div
+                  key={p.horizon}
+                  className="rounded-xl p-4 border-2 text-center"
+                  style={{
+                    borderColor: borderCol,
+                    background: `linear-gradient(135deg, rgba(0,0,0,0.3), rgba(0,0,0,0.1))`,
+                  }}
+                >
+                  <p className="text-base font-semibold text-[var(--foreground)] mb-2">
+                    {p.horizon}년 후 <span className="text-[var(--muted)]">({p.year})</span>
+                  </p>
+                  <p className="text-4xl font-black mb-1" style={{ color }}>
+                    {p.temp.toFixed(1)}℃
+                  </p>
+                  <p className="text-sm text-[var(--muted)]">
+                    {p.lower.toFixed(1)} ~ {p.upper.toFixed(1)}℃
+                  </p>
+                  <p className="text-sm font-semibold mt-1" style={{ color }}>
+                    {p.anomaly >= 0 ? '+' : ''}{p.anomaly.toFixed(2)}℃ 편차
+                  </p>
+
+                  {ext && (
+                    <div className="mt-3 pt-3 border-t border-[var(--card-border)] space-y-2.5 text-left">
+                      <ExtremeRow label="열대야" value={ext.tropicalNights} color="text-amber-400" tooltip="일 최저기온 25℃ 이상" />
+                      <ExtremeRow label="폭염일" value={ext.heatwaveDays} color="text-rose-400" tooltip="일 최고기온 33℃ 이상" />
+                      <ExtremeRow label="여름일" value={ext.summerDays} color="text-orange-400" tooltip="일 최고기온 25℃ 이상" />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          <p className="text-xs text-[var(--muted)] mb-4 text-right">
+            과거: 해당 연도 ±2년 실측 평균 / 미래: 선형회귀 예측 (95% 신뢰구간)
+          </p>
+        </>
       )}
 
-      {/* 현재 기준 */}
-      {forecastData && (
-        <p className="text-xs text-[var(--muted)] mt-3 text-right">
-          현재(최근 5년 평균) — 열대야 {forecastData.recentAvg.tropicalNights.toFixed(0)}일 / 폭염 {forecastData.recentAvg.heatwaveDays.toFixed(0)}일 / 여름 {forecastData.recentAvg.summerDays.toFixed(0)}일
-        </p>
-      )}
+      <svg ref={svgRef} />
     </div>
   );
 }
