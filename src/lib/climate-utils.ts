@@ -486,10 +486,12 @@ export function calcExtremeDayProjections(records: DailyRecord[], horizons: numb
     };
   }
 
-  const xs = years;
-  const tnYs = years.map((y) => yearMap.get(y)!.tn);
-  const hwYs = years.map((y) => yearMap.get(y)!.hw);
-  const sdYs = years.map((y) => yearMap.get(y)!.sd);
+  // 극단일수는 최근 가속화 → 최근 30년 데이터만 사용해 회귀
+  const recentYears = years.length > 30 ? years.slice(-30) : years;
+  const xs = recentYears;
+  const tnYs = recentYears.map((y) => yearMap.get(y)!.tn);
+  const hwYs = recentYears.map((y) => yearMap.get(y)!.hw);
+  const sdYs = recentYears.map((y) => yearMap.get(y)!.sd);
 
   const tnReg = linearRegression(xs, tnYs);
   const hwReg = linearRegression(xs, hwYs);
