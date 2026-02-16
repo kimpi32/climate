@@ -439,3 +439,82 @@ export function decomposeSeasonality(records: DailyRecord[]): DecompositionResul
 
   return { points };
 }
+
+/**
+ * 극한일수 연간 추세 + 미래 예측
+ * - 열대야: 일 최저기온 ≥ 25℃
+ * - 폭염일: 일 최고기온 ≥ 33℃
+ * - 여름일: 일 최고기온 ≥ 25℃
+ */
+export interface ExtremeDayProjection {
+  horizon: number;
+  year: number;
+  tropicalNights: number;
+  heatwaveDays: number;
+  summerDays: number;
+}
+
+export function calcExtremeDayProjections(records: DailyRecord[], horizons: number[]): {
+  projections: ExtremeDayProjection[];
+  recentAvg: { tropicalNights: number; heatwaveDays: number; summerDays: number };
+} {
+  // 연간 집계
+  const yearMap = new Map<number, { tn: number; hw: number; sd: number }>();
+  records.forEach((r) => {
+    const year = parseInt(r.date.slice(0, 4));
+    if (!yearMap.has(year)) yearMap.set(year, { tn: 0, hw: 0, sd: 0 });
+    const y = yearMap.get(year)!;
+    if (r.minTemp >= 25) y.tn++;
+    if (r.maxTemp >= 33) y.hw++;
+    if (r.maxTemp >= 25) y.sd++;
+  });
+
+  const years = Array.from(yearMap.keys()).sort((a, b) => a - b)
+    .filter((y) => {
+      // 결측 연도 제외 (데이터 300일 미만)
+      const count = records.filter((r) => parseInt(r.date.slice(0, 4)) === y).length;
+      return count >= 300;
+    });
+
+  if (years.length < 10) {
+    return {
+      projections: horizons.map((h) => ({
+        horizon: h, year: years[years.length - 1] + h,
+        tropicalNights: 0, heatwaveDays: 0, summerDays: 0,
+      })),
+      recentAvg: { tropicalNights: 0, heatwaveDays: 0, summerDays: 0 },
+    };
+  }
+
+  const xs = years;
+  const tnYs = years.map((y) => yearMap.get(y)!.tn);
+  const hwYs = years.map((y) => yearMap.get(y)!.hw);
+  const sdYs = years.map((y) => yearMap.get(y)!.sd);
+
+  const tnReg = linearRegression(xs, tnYs);
+  const hwReg = linearRegression(xs, hwYs);
+  const sdReg = linearRegression(xs, sdYs);
+
+  const lastYear = years[years.length - 1];
+
+  // 최근 5년 평균
+  const recent5 = years.slice(-5);
+  const recentAvg = {
+    tropicalNights: recent5.reduce((s, y) => s + yearMap.get(y)!.tn, 0) / recent5.length,
+    heatwaveDays: recent5.reduce((s, y) => s + yearMap.get(y)!.hw, 0) / recent5.length,
+    summerDays: recent5.reduce((s, y) => s + yearMap.get(y)!.sd, 0) / recent5.length,
+  };
+
+  const projections = horizons.map((h) => {
+    const targetYear = lastYear + h;
+    return {
+      horizon: h,
+      year: targetYear,
+      tropicalNights: Math.max(0, Math.round(tnReg.slope * targetYear + tnReg.intercept)),
+      heatwaveDays: Math.max(0, Math.round(hwReg.slope * targetYear + hwReg.intercept)),
+      summerDays: Math.max(0, Math.round(sdReg.slope * targetYear + sdReg.intercept)),
+    };
+  });
+
+  return { projections, recentAvg };
+}
