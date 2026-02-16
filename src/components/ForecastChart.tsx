@@ -3,7 +3,7 @@
 import { useEffect, useRef, useMemo, useState } from 'react';
 import * as d3 from 'd3';
 import type { DailyRecord } from '@/types/climate';
-import { calcForecast, calcBaselineAnnualMean, calcExtremeDayProjections } from '@/lib/climate-utils';
+import { calcForecast, calcBaselineAnnualMean, linearRegression } from '@/lib/climate-utils';
 import { CHART_COLORS, ANALYSIS_COLORS } from '@/lib/constants';
 
 interface ForecastChartProps {
@@ -11,12 +11,15 @@ interface ForecastChartProps {
   cityName: string;
 }
 
-const HORIZONS = [10, 20, 30, 50];
+const SCENARIO_STYLES = [
+  { bg: 'rgba(59, 130, 246, 0.06)', border: 'rgba(96, 165, 250, 0.45)', accent: '#60a5fa' },
+  { bg: 'rgba(245, 158, 11, 0.06)', border: 'rgba(245, 158, 11, 0.45)', accent: '#f59e0b' },
+  { bg: 'rgba(239, 68, 68, 0.06)', border: 'rgba(239, 68, 68, 0.45)', accent: '#ef4444' },
+];
 
-// 편차 → 색상 (점진적 빨강)
 function anomalyColor(anomaly: number): string {
-  const t = Math.min(Math.max(anomaly / 3, 0), 1); // 0~3℃ 범위 정규화
-  const r = Math.round(239 + (180 - 239) * (1 - t)); // 밝은 주황 → 진한 빨강
+  const t = Math.min(Math.max(anomaly / 3, 0), 1);
+  const r = Math.round(239 + (180 - 239) * (1 - t));
   const g = Math.round(160 * (1 - t));
   const b = Math.round(80 * (1 - t));
   return `rgb(${r}, ${g}, ${b})`;
@@ -40,39 +43,8 @@ export default function ForecastChart({ records, cityName }: ForecastChartProps)
     if (result.historical.length === 0) return null;
     const baselineMean = calcBaselineAnnualMean(records);
     const lastYear = result.historical[result.historical.length - 1].year;
-    const { slope, intercept } = result;
 
-    const xs = result.historical.map((d) => d.year);
-    const ys = result.historical.map((d) => d.anomaly);
-    const n = xs.length;
-    const xMean = xs.reduce((a, b) => a + b, 0) / n;
-    const sxx = xs.reduce((s, x) => s + (x - xMean) ** 2, 0);
-    const residuals = ys.map((y, i) => y - (slope * xs[i] + intercept));
-    const se = Math.sqrt(residuals.reduce((s, r) => s + r * r, 0) / (n - 2));
-
-    // 미래 예측
-    const predictions = HORIZONS.map((h) => {
-      const targetYear = lastYear + h;
-      const anomaly = slope * targetYear + intercept;
-      const margin = 1.96 * se * Math.sqrt(1 + 1 / n + (targetYear - xMean) ** 2 / sxx);
-      return {
-        horizon: h,
-        year: targetYear,
-        temp: baselineMean + anomaly,
-        lower: baselineMean + anomaly - margin,
-        upper: baselineMean + anomaly + margin,
-        anomaly,
-      };
-    });
-
-    // 과거 실측 (10년 단위 평균)
-    const DECADES = [
-      { label: '1970년대', start: 1970, end: 1979 },
-      { label: '1990년대', start: 1990, end: 1999 },
-      { label: '2000년대', start: 2000, end: 2009 },
-      { label: '2010년대', start: 2010, end: 2019 },
-    ];
-
+    // 연간 집계
     const yearMap = new Map<number, { temps: number[]; tn: number; hw: number; sd: number }>();
     records.forEach((r) => {
       const y = parseInt(r.date.slice(0, 4));
@@ -84,8 +56,16 @@ export default function ForecastChart({ records, cityName }: ForecastChartProps)
       if (r.maxTemp >= 25) entry.sd++;
     });
 
+    // 과거 실측 (10년 단위 평균)
+    const DECADES = [
+      { label: '1970년대', start: 1970, end: 1979 },
+      { label: '1990년대', start: 1990, end: 1999 },
+      { label: '2000년대', start: 2000, end: 2009 },
+      { label: '2010년대', start: 2010, end: 2019 },
+    ];
+
     const pastCards = DECADES.map((dec) => {
-      const decadeYears: typeof yearMap extends Map<number, infer V> ? { year: number; data: V }[] : never = [];
+      const decadeYears: { year: number; data: { temps: number[]; tn: number; hw: number; sd: number } }[] = [];
       for (let y = dec.start; y <= dec.end; y++) {
         const d = yearMap.get(y);
         if (d && d.temps.length >= 300) decadeYears.push({ year: y, data: d });
@@ -106,8 +86,8 @@ export default function ForecastChart({ records, cityName }: ForecastChartProps)
       };
     }).filter((v): v is NonNullable<typeof v> => v != null);
 
-    // 최근 3년 (2023-2025) 실측
-    const RECENT_YEARS = [2023, 2024, 2025];
+    // 최근 실측 (2021-2025)
+    const RECENT_YEARS = [2021, 2022, 2023, 2024, 2025];
     const recentYearEntries = RECENT_YEARS
       .map((y) => ({ year: y, data: yearMap.get(y) }))
       .filter((e): e is { year: number; data: NonNullable<typeof e.data> } => e.data != null && e.data.temps.length >= 300);
@@ -129,12 +109,54 @@ export default function ForecastChart({ records, cityName }: ForecastChartProps)
       };
     })() : null;
 
-    const { projections, recentAvg } = calcExtremeDayProjections(records, HORIZONS);
+    // 미래 시나리오 (저위/중위/고위 추계)
+    const SCENARIO_HORIZON = 30;
+    const targetYear = lastYear + SCENARIO_HORIZON;
 
-    // 첫 연대 기준 온도 (비교 기준점)
+    const validYears = Array.from(yearMap.entries())
+      .filter(([, d]) => d.temps.length >= 300)
+      .map(([y, d]) => ({
+        year: y,
+        avgTemp: d.temps.reduce((a, b) => a + b, 0) / d.temps.length,
+        tn: d.tn, hw: d.hw, sd: d.sd,
+      }))
+      .sort((a, b) => a.year - b.year);
+
+    const SCENARIO_DEFS: { label: string; desc: string; window: number | undefined }[] = [
+      { label: '저위추계', desc: '장기(전체) 추세 기반', window: undefined },
+      { label: '중위추계', desc: '최근 30년 추세 기반', window: 30 },
+      { label: '고위추계', desc: '최근 15년 추세 기반', window: 15 },
+    ];
+
+    const scenarios = SCENARIO_DEFS.map((s) => {
+      const data = s.window && validYears.length > s.window
+        ? validYears.slice(-s.window) : validYears;
+      const xs = data.map((d) => d.year);
+
+      const tempYs = data.map((d) => d.avgTemp - baselineMean);
+      const tempReg = linearRegression(xs, tempYs);
+      const anomaly = tempReg.slope * targetYear + tempReg.intercept;
+      const temp = baselineMean + anomaly;
+
+      const tnReg = linearRegression(xs, data.map((d) => d.tn));
+      const hwReg = linearRegression(xs, data.map((d) => d.hw));
+      const sdReg = linearRegression(xs, data.map((d) => d.sd));
+
+      return {
+        label: s.label,
+        desc: s.desc,
+        year: targetYear,
+        temp,
+        anomaly,
+        tropicalNights: Math.max(0, Math.round(tnReg.slope * targetYear + tnReg.intercept)),
+        heatwaveDays: Math.max(0, Math.round(hwReg.slope * targetYear + hwReg.intercept)),
+        summerDays: Math.max(0, Math.round(sdReg.slope * targetYear + sdReg.intercept)),
+      };
+    });
+
     const firstDecadeTemp = pastCards.length > 0 ? pastCards[0].temp : baselineMean;
 
-    return { predictions, projections, recentAvg, pastCards, recentCard, firstDecadeTemp, baselineMean };
+    return { scenarios, pastCards, recentCard, firstDecadeTemp, baselineMean, targetYear };
   }, [records]);
 
   useEffect(() => {
@@ -435,51 +457,50 @@ export default function ForecastChart({ records, cityName }: ForecastChartProps)
           {/* 구분선 */}
           <div className="flex items-center gap-3 my-4">
             <div className="flex-1 h-px bg-[var(--card-border)]" />
-            <span className="text-sm font-semibold text-[var(--muted)]">미래 예측</span>
+            <span className="text-sm font-semibold text-[var(--muted)]">
+              {forecastData.targetYear}년 예측 (30년 후)
+            </span>
             <div className="flex-1 h-px bg-[var(--card-border)]" />
           </div>
 
-          {/* 미래 예측 */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-            {forecastData.predictions.map((p, i) => {
-              const ext = forecastData.projections[i];
-              const diff = p.temp - forecastData.firstDecadeTemp;
-              const color = anomalyColor(p.anomaly);
-              const borderCol = anomalyBorderColor(p.anomaly);
+          {/* 미래 시나리오 */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            {forecastData.scenarios.map((s, i) => {
+              const diff = s.temp - forecastData.firstDecadeTemp;
+              const style = SCENARIO_STYLES[i];
               return (
                 <div
-                  key={p.horizon}
-                  className="rounded-xl p-4 border-2 text-center"
+                  key={s.label}
+                  className="rounded-xl p-5 border-2 text-center"
                   style={{
-                    borderColor: borderCol,
-                    background: `linear-gradient(135deg, rgba(0,0,0,0.3), rgba(0,0,0,0.1))`,
+                    borderColor: style.border,
+                    background: `linear-gradient(135deg, ${style.bg}, rgba(0,0,0,0.08))`,
                   }}
                 >
-                  <p className="text-base font-semibold text-[var(--foreground)] mb-3">
-                    {p.horizon}년 후 <span className="text-[var(--muted)]">({p.year})</span>
+                  <p className="text-lg font-bold" style={{ color: style.accent }}>
+                    {s.label}
                   </p>
+                  <p className="text-xs text-[var(--muted)] mb-3">{s.desc}</p>
                   <p className="text-sm text-[var(--muted)]">예측 연평균</p>
-                  <p className="text-4xl font-black" style={{ color }}>
-                    {p.temp.toFixed(1)}℃
+                  <p className="text-4xl font-black" style={{ color: style.accent }}>
+                    {s.temp.toFixed(1)}℃
                   </p>
-                  <p className="text-sm font-semibold mt-1" style={{ color }}>
+                  <p className="text-sm font-semibold mt-1" style={{ color: style.accent }}>
                     {forecastData.pastCards[0]?.label ?? '기준'} 대비 {diff >= 0 ? '+' : ''}{diff.toFixed(2)}℃
                   </p>
 
-                  {ext && (
-                    <div className="mt-3 pt-3 border-t border-[var(--card-border)] space-y-2.5 text-left">
-                      <ExtremeRow label="열대야" value={ext.tropicalNights} color="text-amber-400" tooltip="일 최저기온 25℃ 이상" />
-                      <ExtremeRow label="폭염일" value={ext.heatwaveDays} color="text-rose-400" tooltip="일 최고기온 33℃ 이상" />
-                      <ExtremeRow label="여름일" value={ext.summerDays} color="text-orange-400" tooltip="일 최고기온 25℃ 이상" />
-                    </div>
-                  )}
+                  <div className="mt-3 pt-3 border-t border-[var(--card-border)] space-y-2.5 text-left">
+                    <ExtremeRow label="열대야" value={s.tropicalNights} color="text-amber-400" tooltip="일 최저기온 25℃ 이상" />
+                    <ExtremeRow label="폭염일" value={s.heatwaveDays} color="text-rose-400" tooltip="일 최고기온 33℃ 이상" />
+                    <ExtremeRow label="여름일" value={s.summerDays} color="text-orange-400" tooltip="일 최고기온 25℃ 이상" />
+                  </div>
                 </div>
               );
             })}
           </div>
 
           <p className="text-xs text-[var(--muted)] mb-4 text-right">
-            과거: 해당 연도 ±2년 실측 평균 / 미래: 선형회귀 예측 (95% 신뢰구간)
+            저위: 전체 기간 선형추세 / 중위: 최근 30년 추세 / 고위: 최근 15년 추세
           </p>
         </>
       )}

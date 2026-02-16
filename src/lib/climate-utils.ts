@@ -297,7 +297,7 @@ export function groupByYear(records: DailyRecord[]): Map<number, { dayOfYear: nu
 /**
  * OLS 선형회귀 (내부 헬퍼)
  */
-function linearRegression(xs: number[], ys: number[]): { slope: number; intercept: number; rSquared: number } {
+export function linearRegression(xs: number[], ys: number[]): { slope: number; intercept: number; rSquared: number } {
   const n = xs.length;
   let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0, sumYY = 0;
   for (let i = 0; i < n; i++) {
