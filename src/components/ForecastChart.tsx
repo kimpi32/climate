@@ -65,7 +65,14 @@ export default function ForecastChart({ records, cityName }: ForecastChartProps)
       };
     });
 
-    // 과거 실측 (5년 평균으로 안정화)
+    // 과거 실측 (10년 단위 평균)
+    const DECADES = [
+      { label: '1970년대', start: 1970, end: 1979 },
+      { label: '1990년대', start: 1990, end: 1999 },
+      { label: '2000년대', start: 2000, end: 2009 },
+      { label: '2010년대', start: 2010, end: 2019 },
+    ];
+
     const yearMap = new Map<number, { temps: number[]; tn: number; hw: number; sd: number }>();
     records.forEach((r) => {
       const y = parseInt(r.date.slice(0, 4));
@@ -77,25 +84,25 @@ export default function ForecastChart({ records, cityName }: ForecastChartProps)
       if (r.maxTemp >= 25) entry.sd++;
     });
 
-    const pastCards = [...HORIZONS].reverse().map((h) => {
-      const targetYear = lastYear - h;
-      // 해당 연도 ±2년 평균 (5년 윈도우)
-      const window = [-2, -1, 0, 1, 2]
-        .map((d) => yearMap.get(targetYear + d))
-        .filter((v): v is NonNullable<typeof v> => v != null && v.temps.length >= 300);
+    const pastCards = DECADES.map((dec) => {
+      const decadeYears: typeof yearMap extends Map<number, infer V> ? { year: number; data: V }[] : never = [];
+      for (let y = dec.start; y <= dec.end; y++) {
+        const d = yearMap.get(y);
+        if (d && d.temps.length >= 300) decadeYears.push({ year: y, data: d });
+      }
+      if (decadeYears.length === 0) return null;
 
-      if (window.length === 0) return null;
-
-      const avgTemp = window.reduce((s, w) => s + w.temps.reduce((a, b) => a + b, 0) / w.temps.length, 0) / window.length;
+      const avgTemp = decadeYears.reduce((s, { data }) =>
+        s + data.temps.reduce((a, b) => a + b, 0) / data.temps.length, 0) / decadeYears.length;
       const anomaly = avgTemp - baselineMean;
       return {
-        horizon: -h,
-        year: targetYear,
+        label: dec.label,
+        period: `${dec.start}-${dec.end}`,
         temp: avgTemp,
         anomaly,
-        tropicalNights: Math.round(window.reduce((s, w) => s + w.tn, 0) / window.length),
-        heatwaveDays: Math.round(window.reduce((s, w) => s + w.hw, 0) / window.length),
-        summerDays: Math.round(window.reduce((s, w) => s + w.sd, 0) / window.length),
+        tropicalNights: Math.round(decadeYears.reduce((s, { data }) => s + data.tn, 0) / decadeYears.length),
+        heatwaveDays: Math.round(decadeYears.reduce((s, { data }) => s + data.hw, 0) / decadeYears.length),
+        summerDays: Math.round(decadeYears.reduce((s, { data }) => s + data.sd, 0) / decadeYears.length),
       };
     }).filter((v): v is NonNullable<typeof v> => v != null);
 
@@ -333,12 +340,12 @@ export default function ForecastChart({ records, cityName }: ForecastChartProps)
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
             {forecastData.pastCards.map((p) => (
               <div
-                key={p.horizon}
+                key={p.label}
                 className="rounded-xl p-4 border border-[var(--card-border)] text-center"
                 style={{ background: 'rgba(255,255,255,0.03)' }}
               >
                 <p className="text-base font-semibold text-[var(--muted)] mb-2">
-                  {Math.abs(p.horizon)}년 전 <span className="opacity-60">({p.year})</span>
+                  {p.label} <span className="opacity-60 text-sm">평균</span>
                 </p>
                 <p className="text-3xl font-black mb-1 text-[var(--foreground)]">
                   {p.temp.toFixed(1)}℃

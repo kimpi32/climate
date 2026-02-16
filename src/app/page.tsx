@@ -58,6 +58,11 @@ export default function Home() {
           </div>
         ) : (
           <div className="space-y-8">
+            {/* Forecast — 가장 위 */}
+            <section id="forecast">
+              <ForecastChart records={records} cityName={cityInfo.name} />
+            </section>
+
             {/* Warming Stripes */}
             <section id="warming-stripes">
               <WarmingStripes records={records} cityName={cityInfo.name} />
@@ -91,11 +96,6 @@ export default function Home() {
             {/* Anomaly Detection */}
             <section id="anomaly-detection">
               <AnomalyDetectionChart records={records} cityName={cityInfo.name} />
-            </section>
-
-            {/* Forecast */}
-            <section id="forecast">
-              <ForecastChart records={records} cityName={cityInfo.name} />
             </section>
 
             {/* Seasonal Decomposition */}
